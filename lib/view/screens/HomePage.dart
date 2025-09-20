@@ -19,47 +19,52 @@ class Homepage extends StatefulWidget {
 
 class _HomepageState extends State<Homepage> {
   List<Notemodel> data = [];
-  void notemodell(title, content) {
-    data.add(
-      Notemodel(
-        id: "",
-        title: title,
-        content: content,
-        Date:
-            '${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
-        Time:
-            '${DateTime.now().hour}:${DateTime.now().minute}:${DateTime.now().second}',
-      ),
-    );
-    setState(() {});
-  }
 
   void deletemodel(Notemodel notemodel) async {
-    if (await LocalDataSource.deleteNote(notemodel.id)) {}
+    if (await LocalDataSource.deleteNote(notemodel.id)) {
+      getdata();
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('succces'), backgroundColor: Colors.green),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('failed'), backgroundColor: Colors.red),
+      );
+    }
   }
 
-  void Edit(Notemodel note, String newtitle, String newcontnt) {
+  void Edit(Notemodel note, String newtitle, String newcontnt) async {
     Notemodel newnote = Notemodel(
-      id: '',
+      id: note.id,
       title: newtitle,
       content: newcontnt,
-      Date:
-          '${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
-      Time:
-          '${DateTime.now().hour}:${DateTime.now().minute}:${DateTime.now().second}',
+      Date: note.Date,
+      Time: note.Time,
     );
-    data = data.map((e) => e == note ? newnote : e).toList();
-    setState(() {});
+    if (await LocalDataSource.updateNote(newnote, note.id)) {
+      getdata();
+
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('succces'), backgroundColor: Colors.green),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('failed'), backgroundColor: Colors.red),
+      );
+    }
   }
 
   getdata() async {
-    data = await LocalDataSource.getnotes();
+    data = await LocalDataSource.getNotes();
     setState(() {});
   }
 
-  void initstate() {
+  @override
+  void initState() {
+    // ✅ صحيح
     super.initState();
-
     getdata();
   }
 
@@ -111,34 +116,39 @@ class _HomepageState extends State<Homepage> {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
-                    child: ListView.builder(
-                      itemCount: data.length,
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.all(5.0),
-                          child: Notelistitem(
-                            note: data[index],
-                            onDelete: () {
-                              deletemodel(data[index]);
-                            },
-                            onEdite: () {
-                              showModalBottomSheet(
-                                context: context,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.vertical(
-                                    top: Radius.circular(20),
+                    child: RefreshIndicator(
+                      child: ListView.builder(
+                        itemCount: data.length,
+                        itemBuilder: (context, index) {
+                          return Padding(
+                            padding: const EdgeInsets.all(5.0),
+                            child: Notelistitem(
+                              note: data[index],
+                              onDelete: () {
+                                deletemodel(data[index]);
+                              },
+                              onEdite: () {
+                                showModalBottomSheet(
+                                  context: context,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.vertical(
+                                      top: Radius.circular(20),
+                                    ),
                                   ),
-                                ),
-                                builder: (context) => EditNote(
-                                  note: data[index],
-                                  onPressed: (title, content) {
-                                    Edit(data[index], title, content);
-                                  },
-                                ),
-                              );
-                            },
-                          ),
-                        );
+                                  builder: (context) => EditNote(
+                                    note: data[index],
+                                    onPressed: (title, content) {
+                                      Edit(data[index], title, content);
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                      onRefresh: () {
+                        return getdata();
                       },
                     ),
                   ),
@@ -153,8 +163,8 @@ class _HomepageState extends State<Homepage> {
               borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             ),
             builder: (context) => Addnotenew(
-              onPressed: (title, content) {
-                notemodell(title, content);
+              onPressed: () async {
+                await getdata();
               },
             ),
           );

@@ -1,60 +1,71 @@
 import 'dart:convert';
-
-import 'package:noteapp/main.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:noteapp/model/notemodel.dart';
 
 class LocalDataSource {
-  static String Cashed_Note = "";
-  static Future<bool> addnote(Notemodel newNote) async {
+  static SharedPreferences? sharedPreferences;
+
+  // المفتاح المستخدم لتخزين البيانات
+  static const String _cachedNoteKey = "Cashed_Note";
+
+  /// تهيئة SharedPreferences (يجب استدعاؤها قبل أي عملية حفظ أو قراءة)
+  static Future<void> init() async {
+    sharedPreferences = await SharedPreferences.getInstance();
+  }
+
+  /// حفظ كل الملاحظات
+  static Future<void> saveAllNotes(List<Notemodel> notes) async {
+    final listToJson = notes.map((e) => e.toJson()).toList();
+    final jsonNotes = jsonEncode(listToJson);
+    await sharedPreferences!.setString(_cachedNoteKey, jsonNotes);
+  }
+
+  /// استرجاع كل الملاحظات
+  static Future<List<Notemodel>> getNotes() async {
+    final jsonData = sharedPreferences!.getString(_cachedNoteKey);
+    if (jsonData == null) return [];
+    final List decoded = jsonDecode(jsonData);
+    return decoded.map<Notemodel>((e) => Notemodel.fromJson(e)).toList();
+  }
+
+  /// إضافة ملاحظة جديدة
+  static Future<bool> addNote(Notemodel newNote) async {
     try {
-      final notes = await getnotes();
+      final notes = await getNotes();
       notes.add(newNote);
-      saveallnotes(notes);
+      await saveAllNotes(notes);
       return true;
     } catch (e) {
+      print('Error adding note: $e');
       return false;
     }
   }
 
+  /// حذف ملاحظة حسب المعرف
   static Future<bool> deleteNote(String id) async {
     try {
-      List<Notemodel> notes = await getnotes();
+      final notes = await getNotes();
       notes.removeWhere((element) => element.id == id);
-      saveallnotes(notes);
+      await saveAllNotes(notes);
       return true;
     } catch (e) {
+      print('Error deleting note: $e');
       return false;
     }
   }
 
-  static Future<bool> updatenote(Notemodel newNote, String id) async {
+  /// تعديل ملاحظة حسب المعرف
+  static Future<bool> updateNote(Notemodel updatedNote, String id) async {
     try {
-      List<Notemodel> notes = await getnotes();
-      notes = notes.map<Notemodel>((e) => e.id == id ? newNote : e).toList();
-      saveallnotes(notes);
+      final notes = await getNotes();
+      final updatedList = notes
+          .map<Notemodel>((note) => note.id == id ? updatedNote : note)
+          .toList();
+      await saveAllNotes(updatedList);
       return true;
     } catch (e) {
-      print('erroe $e');
+      print('Error updating note: $e');
       return false;
     }
-  }
-
-  static Future<List<Notemodel>> getnotes() {
-    final JsonData = sharedprefernces!.getString(Cashed_Note);
-    if (JsonData == null)
-      return Future.value([]);
-    else {
-      List jsonTolist = jsonDecode(JsonData);
-      return Future.value(
-        jsonTolist
-            .map<Notemodel>((jsonnote) => Notemodel.fromJson(jsonnote))
-            .toList(),
-      );
-    }
-  }
-
-  static saveallnotes(List<Notemodel> notes) {
-    final jsonNotes = jsonEncode(notes);
-    sharedprefernces!.setString(Cashed_Note, jsonNotes);
   }
 }

@@ -7,7 +7,9 @@ import 'package:noteapp/model/notemodel.dart';
 
 class Addnotenew extends StatelessWidget {
   const Addnotenew({super.key, required this.onPressed});
-  final Function onPressed;
+ final Future<void> Function()
+  onPressed; // ✅ دالة بدون معاملات وتعيد Future<void>
+
   static TextEditingController title = TextEditingController();
   static TextEditingController content = TextEditingController();
   static GlobalKey<FormState> formkey = GlobalKey();
@@ -58,9 +60,10 @@ class Addnotenew extends StatelessWidget {
                             Time:
                                 '${DateTime.now().hour}:${DateTime.now().minute}:${DateTime.now().second}',
                           );
-                          if (await LocalDataSource.addnote(note)) {
+                          if (await LocalDataSource.addNote(note)) {
                             title.clear();
                             content.clear();
+                            await onPressed();
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
